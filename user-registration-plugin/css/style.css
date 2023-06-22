@@ -1,0 +1,14 @@
+.form_handler{
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
+}
+.form_handler label{
+    margin: 10px 0px;
+}
+#submit_form_handler{
+    width: 20%;
+    display: block;
+    margin: 0 auto;
+    margin-top: 40px;
+}
