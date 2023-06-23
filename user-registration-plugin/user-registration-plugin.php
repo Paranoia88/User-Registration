@@ -11,15 +11,22 @@
  * WP version: 6.2.2
  **/
 class User_Registration_Form_Plugin {
+    private $db;
 
     /**
      * Initialize the plugin.
      */
     public function __construct() {
+
+        global $wpdb;
+        $this->db = $wpdb;
+
         add_shortcode( 'user_registration_form', array( $this, 'render_registration_form' ) );
         add_action( 'init', array( $this, 'process_registration_form' ) );
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_styles' ) );
         add_action( 'user_registration_success', array($this, 'send_registration_email'), 10, 1 );
+        add_shortcode( 'user_display_form', array( $this, 'render_display_form' ) );
+        
     }
 
     public function enqueue_styles(){
@@ -110,6 +117,9 @@ class User_Registration_Form_Plugin {
     }
 
     public function send_registration_email( $user_id ) {
+
+        ob_start();
+
         $user = get_user_by( 'ID', $user_id );
     
         // Prepare and send the registration email
@@ -122,12 +132,106 @@ class User_Registration_Form_Plugin {
     
         wp_mail( $to, $subject, $message, $headers );
     }
-    
-
-}
 
 
+  
+    //render display form to display cards
+    public function render_display_form(){
+        
+        global $wpdb;
 
+        $user_ids =  $wpdb->get_results("SELECT * FROM {$wpdb->users}");
+        
+        foreach ($user_ids as $user_iden) {
+            echo "User ID: " . $user_iden->ID . "<br>";
+            echo "Username: " . $user_iden->user_login . "<br>";
+            echo "Email: " . $user_iden ->user_email . "<br>";
+            // ... and so on for other fields
+        
+            echo "<br>";
+        
+                //error_log(print_r($user_iden));
+                $user_identity = $user_iden->ID; // Replace 'column1' with the actual column name
+                $user_email = $user_col->user_email; // Replace 'column2' with the actual column name
+                $user_usernae = $user_col->user_login;
+                // Load and display the HTML template
+                ob_start();
+        ?>
+                        <!DOCTYPE html>
+                    <html>
+                    <head>
+                    <title>User Reviews</title>
+                    <style>
+                        .grid-container {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        grid-gap: 20px;
+                        padding: 20px;
+                        }
+
+                        .review-card {
+                        border: 1px solid #ccc;
+                        padding: 20px;
+                        background-color: #f9f9f9;
+                        }
+
+                        .review-title {
+                        font-weight: bold;
+                        margin-bottom: 10px;
+                        }
+
+                        .review-content {
+                        margin-bottom: 10px;
+                        }
+
+                        .review-author {
+                        font-style: italic;
+                        color: #888;
+                        }
+                    </style>
+                    </head>
+                    <body>
+                    <div class="grid-container">
+                        <!-- Replace the following block with a loop to iterate over user reviews -->
+                        <div class="review-card">
+                        <h2 class="review-title">Review Title</h2>
+                        <p class="review-content">Review content goes here.</p>
+                        <p class="review-author">- Author Name</p>
+                        <p class="user-email">User Email: example@example.com</p>
+                        <p class="user-firstname">First Name: John</p>
+                        <p class="user-lastname">Last Name: Doe</p>
+                        <p class="user-review">Review: 4</p>
+                        </div>
+                        <div class="review-card">
+                        <h2 class="review-title">Review Title</h2>
+                        <p class="review-content">Review content goes here.</p>
+                        <p class="review-author">- Author Name</p>
+                        <p class="user-email">User Email: example@example.com</p>
+                        <p class="user-firstname">First Name: John</p>
+                        <p class="user-lastname">Last Name: Doe</p>
+                        <p class="user-review">Review: 4</p>
+                        </div>
+                        <div class="review-card">
+                        <h2 class="review-title">Review Title</h2>
+                        <p class="review-content">Review content goes here.</p>
+                        <p class="review-author">- Author Name</p>
+                        <p class="user-email">User Email: example@example.com</p>
+                        <p class="user-firstname">First Name: John</p>
+                        <p class="user-lastname">Last Name: Doe</p>
+                        <p class="user-review">Review: 4</p>
+                        </div>
+                        <!-- End of user reviews loop -->
+                    <!-- </div>
+                    </body>
+                    </html>
+
+        <?php
+
+            return ob_get_clean();
+            
+                    }
+        }
+        }
 
 // Instantiate the plugin.
 new User_Registration_Form_Plugin();
