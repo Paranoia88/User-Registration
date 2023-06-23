@@ -12,6 +12,7 @@
  **/
 class User_Registration_Form_Plugin {
     private $db;
+    private $user_ids;
 
     /**
      * Initialize the plugin.
@@ -139,99 +140,52 @@ class User_Registration_Form_Plugin {
     public function render_display_form(){
         
         global $wpdb;
-
-        $user_ids =  $wpdb->get_results("SELECT * FROM {$wpdb->users}");
         
-        foreach ($user_ids as $user_iden) {
-            echo "User ID: " . $user_iden->ID . "<br>";
-            echo "Username: " . $user_iden->user_login . "<br>";
-            echo "Email: " . $user_iden ->user_email . "<br>";
-            // ... and so on for other fields
-        
-            echo "<br>";
-        
-                //error_log(print_r($user_iden));
-                $user_identity = $user_iden->ID; // Replace 'column1' with the actual column name
-                $user_email = $user_col->user_email; // Replace 'column2' with the actual column name
-                $user_usernae = $user_col->user_login;
-                // Load and display the HTML template
-                ob_start();
-        ?>
-                        <!DOCTYPE html>
-                    <html>
-                    <head>
-                    <title>User Reviews</title>
-                    <style>
-                        .grid-container {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        grid-gap: 20px;
-                        padding: 20px;
-                        }
-
-                        .review-card {
-                        border: 1px solid #ccc;
-                        padding: 20px;
-                        background-color: #f9f9f9;
-                        }
-
-                        .review-title {
-                        font-weight: bold;
-                        margin-bottom: 10px;
-                        }
-
-                        .review-content {
-                        margin-bottom: 10px;
-                        }
-
-                        .review-author {
-                        font-style: italic;
-                        color: #888;
-                        }
-                    </style>
-                    </head>
-                    <body>
-                    <div class="grid-container">
-                        <!-- Replace the following block with a loop to iterate over user reviews -->
-                        <div class="review-card">
-                        <h2 class="review-title">Review Title</h2>
-                        <p class="review-content">Review content goes here.</p>
-                        <p class="review-author">- Author Name</p>
-                        <p class="user-email">User Email: example@example.com</p>
-                        <p class="user-firstname">First Name: John</p>
-                        <p class="user-lastname">Last Name: Doe</p>
-                        <p class="user-review">Review: 4</p>
-                        </div>
-                        <div class="review-card">
-                        <h2 class="review-title">Review Title</h2>
-                        <p class="review-content">Review content goes here.</p>
-                        <p class="review-author">- Author Name</p>
-                        <p class="user-email">User Email: example@example.com</p>
-                        <p class="user-firstname">First Name: John</p>
-                        <p class="user-lastname">Last Name: Doe</p>
-                        <p class="user-review">Review: 4</p>
-                        </div>
-                        <div class="review-card">
-                        <h2 class="review-title">Review Title</h2>
-                        <p class="review-content">Review content goes here.</p>
-                        <p class="review-author">- Author Name</p>
-                        <p class="user-email">User Email: example@example.com</p>
-                        <p class="user-firstname">First Name: John</p>
-                        <p class="user-lastname">Last Name: Doe</p>
-                        <p class="user-review">Review: 4</p>
-                        </div>
-                        <!-- End of user reviews loop -->
-                    <!-- </div>
-                    </body>
-                    </html>
-
-        <?php
-
-            return ob_get_clean();
+        //$user_ids =  $wpdb->get_results("SELECT * FROM {$wpdb->users}");
+        $query = "
+        SELECT u.user_email, CONCAT(um.meta_value, ' ', um2.meta_value) AS full_name, um3.meta_value AS review_rating, um4.meta_value AS review_description
+        FROM {$wpdb->users} AS u
+        LEFT JOIN {$wpdb->usermeta} AS um ON u.ID = um.user_id AND um.meta_key = 'first_name'
+        LEFT JOIN {$wpdb->usermeta} AS um2 ON u.ID = um2.user_id AND um2.meta_key = 'last_name'
+        LEFT JOIN {$wpdb->usermeta} AS um3 ON u.ID = um3.user_id AND um3.meta_key = 'review_rating'
+        LEFT JOIN {$wpdb->usermeta} AS um4 ON u.ID = um4.user_id AND um4.meta_key = 'review'
+        GROUP BY u.ID
+        ";
+        $user_records = $wpdb->get_results($query);
+        echo "<pre>";
+        error_log(print_r($user_ids));
+        echo "</pre>";
+     
+            // $user_iden = $wpdb->get_results("SELECT * FROM {$wpdb->usermeta} WHERE ID = $user_iden");
+            foreach ($user_records as $record) {
+                // $user_email = !empty($record->user_email) ? $record->user_email : 'N/A';
+                // $full_name = !empty($record->full_name) ? $record->full_name : 'N/A';
+                // $review_rating = !empty($record->review_rating) ? $record->review_rating : 'N/A';
+                // $review_description = !empty($record->review_description) ? $record->review_description : 'N/A';
             
-                    }
-        }
-        }
+                // // Perform any operations with the variables for each row
+                // // For example, you can print them or store them in an array
+                // echo "User Email: " . $user_email . "<br>";
+                // echo "Full Name: " . $full_name . "<br>";
+                // echo "Review Rating: " . $review_rating . "<br>";
+                // echo "Review Description: " . $review_description . "<br>";
+                // echo "<br>";
+                
 
+               
+                    ob_start();
+            
+                    // Include the template file
+                    $file = ABSPATH . 'wp-content/plugins/user-registration-form/review-card.php';
+            
+                    include_once($file);
+            
+                    return ob_get_clean();
+                
+
+            }
+    }
+}
+            
 // Instantiate the plugin.
 new User_Registration_Form_Plugin();
