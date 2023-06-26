@@ -32,6 +32,7 @@ class User_Registration_Form_Plugin {
 
     public function enqueue_styles(){
         wp_enqueue_style( 'user_registration_form_styles', plugin_dir_url( __FILE__ ) . 'css/style.css' );
+        wp_enqueue_style( 'font-awesome-for-rating',  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
     }
     /**
      * Render the registration form shortcode.
@@ -58,7 +59,7 @@ class User_Registration_Form_Plugin {
             <textarea name="review" id="review"></textarea>
 
             <label for = "review_rating">Rate on the scale of 1 to 5 </label>
-            <input type="number" name="review_rating" id="review_rating" min="0" max="5" required>
+            <input type="number" name="review_rating" id="review_rating" min="1" max="5" required>
 
             <input type="submit" id = "submit_form_handler" value="Register">
         </form>
@@ -125,7 +126,7 @@ class User_Registration_Form_Plugin {
     
         // Prepare and send the registration email
         $to = $user->user_email;
-        error_log(print_r($user));
+        // error_log(print_r($user));
         
         $subject = 'Registration Successful';
         $message = 'Dear ' . $user->display_name . ', your registration was successful.';
@@ -136,55 +137,183 @@ class User_Registration_Form_Plugin {
 
 
   
-    //render display form to display cards
-    public function render_display_form(){
-        
-        global $wpdb;
-        
-        //$user_ids =  $wpdb->get_results("SELECT * FROM {$wpdb->users}");
-        $query = "
-        SELECT u.user_email, CONCAT(um.meta_value, ' ', um2.meta_value) AS full_name, um3.meta_value AS review_rating, um4.meta_value AS review_description
-        FROM {$wpdb->users} AS u
-        LEFT JOIN {$wpdb->usermeta} AS um ON u.ID = um.user_id AND um.meta_key = 'first_name'
-        LEFT JOIN {$wpdb->usermeta} AS um2 ON u.ID = um2.user_id AND um2.meta_key = 'last_name'
-        LEFT JOIN {$wpdb->usermeta} AS um3 ON u.ID = um3.user_id AND um3.meta_key = 'review_rating'
-        LEFT JOIN {$wpdb->usermeta} AS um4 ON u.ID = um4.user_id AND um4.meta_key = 'review'
-        GROUP BY u.ID
-        ";
-        $user_records = $wpdb->get_results($query);
-        echo "<pre>";
-        error_log(print_r($user_ids));
-        echo "</pre>";
-     
-            // $user_iden = $wpdb->get_results("SELECT * FROM {$wpdb->usermeta} WHERE ID = $user_iden");
-            foreach ($user_records as $record) {
-                // $user_email = !empty($record->user_email) ? $record->user_email : 'N/A';
-                // $full_name = !empty($record->full_name) ? $record->full_name : 'N/A';
-                // $review_rating = !empty($record->review_rating) ? $record->review_rating : 'N/A';
-                // $review_description = !empty($record->review_description) ? $record->review_description : 'N/A';
-            
-                // // Perform any operations with the variables for each row
-                // // For example, you can print them or store them in an array
-                // echo "User Email: " . $user_email . "<br>";
-                // echo "Full Name: " . $full_name . "<br>";
-                // echo "Review Rating: " . $review_rating . "<br>";
-                // echo "Review Description: " . $review_description . "<br>";
-                // echo "<br>";
-                
+    public function render_display_form()
+{
+    ob_start();
+    global $wpdb;
 
-               
-                    ob_start();
-            
-                    // Include the template file
-                    $file = ABSPATH . 'wp-content/plugins/user-registration-form/review-card.php';
-            
-                    include_once($file);
-            
-                    return ob_get_clean();
-                
+    if (is_user_logged_in()) {
+        // Get the current page number from the query parameter
+        $current_page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        // Set the number of reviews to display per page
+        $reviews_per_page = 5;
 
+       
+        
+        // Check if the latest filter has changed
+        $latest_filter_changes = isset($_GET['latest-filter-changes']) ? intval($_GET['latest-filter-changes']) : 0;
+        // Check if the review filter has changed
+        $review_filter_changes = isset($_GET['review-filter-changes']) ? intval($_GET['review-filter-changes']) : 0;
+        // Check if the pagination has changed
+        $pagination_changes = isset($_GET['pagination-changes']) ? intval($_GET['pagination-changes']) : 0;
+
+        // Calculate the offset for the query
+        $offset = ($current_page - 1) * $reviews_per_page;
+
+              // Check if the latest filter has changed
+              if ($latest_filter_changes === 1) {
+                $current_page = 1;
+                $offset = 0;
             }
-    }
+    
+            // Check if the review filter has changed
+            if ($review_filter_changes === 1) {
+                $current_page = 1;
+                $offset = 0;
+            }
+    
+            // Check if the pagination has changed
+            if ($pagination_changes === 1) {
+                // Maintain the current review and latest filter
+                // No changes required for $current_page and $offset
+            }else {
+                // Pagination is not changed, get the current page number from the query parameter
+                $current_page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+                $offset = ($current_page - 1) * $reviews_per_page;
+            }
+       
+        
+        // Build the initial query
+        $query = "
+            SELECT u.user_email, CONCAT(um.meta_value, ' ', um2.meta_value) AS full_name, um3.meta_value AS review_rating, um4.meta_value AS review_description
+            FROM {$wpdb->users} AS u
+            LEFT JOIN {$wpdb->usermeta} AS um ON u.ID = um.user_id AND um.meta_key = 'first_name'
+            LEFT JOIN {$wpdb->usermeta} AS um2 ON u.ID = um2.user_id AND um2.meta_key = 'last_name'
+            LEFT JOIN {$wpdb->usermeta} AS um3 ON u.ID = um3.user_id AND um3.meta_key = 'review_rating'
+            LEFT JOIN {$wpdb->usermeta} AS um4 ON u.ID = um4.user_id AND um4.meta_key = 'review'
+            GROUP BY u.ID
+        ";
+
+        // Apply rating filter
+        if (!empty($rating_filter)) {
+            $query .= " HAVING um3.meta_value = {$rating_filter}";
+        }
+
+        // Apply date filter
+        if ($date_filter === 'latest') {
+            $query .= " ORDER BY u.user_registered DESC";
+        }
+
+  
+
+        // Append pagination information to the query
+        $query .= " LIMIT $reviews_per_page OFFSET $offset";
+
+        // Execute the query to get the user records
+        $user_records = $wpdb->get_results($query);
+
+        // Execute the query to get the total number of reviews
+        $total_reviews = count($user_records);
+
+        // Calculate the total number of pages
+        $total_pages = ceil($total_reviews / $reviews_per_page);
+
+        // Display the filter options in the review card
+        ?>
+        <div class="reviews-grid">
+            <form action="<?php echo esc_url($_SERVER['REQUEST_URI']); ?>" method="GET" class="review-filters">
+                <div>
+                    <label for="rating-filter">Filter by Rating:</label>
+                    <select name="rating-filter" id="rating-filter">
+                        <option value="">All Ratings</option>
+                        <option value="1">1 Star</option>
+                        <option value="2">2 Stars</option>
+                        <option value="3">3 Stars</option>
+                        <option value="4">4 Stars</option>
+                        <option value="5">5 Stars</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="date-filter">Filter by Registration Date:</label>
+                    <select name="date-filter" id="date-filter">
+                        <option value="">All Dates</option>
+                        <option value="latest">Latest Registered</option>
+                    </select>
+                </div>
+                <input type="hidden" name="latest-filter-changes" value="0">
+                <input type="hidden" name="review-filter-changes" value="0">
+                <input type="hidden" name="pagination-changes" value="0">
+                <input type="submit" value="Apply Filter">
+            </form>
+        <?php
+        error_log(print_r($current_page));
+            // Display pagination links
+        echo '<div class="pagination">';
+        if ($current_page > 1) {
+            // Display the previous page link
+            $prev_page = $current_page - 1;
+            echo '<a href="' . esc_url(add_query_arg('page', $prev_page)) . '">Previous</a>';
+        }
+
+        for ($i = 1; $i <= $total_pages; $i++) {
+            // Display the page number link
+            echo '<a href="' . esc_url(add_query_arg('page', $i)) . '">' . $i . '</a>';
+        }
+
+        if ($current_page < $total_pages) {
+            // Display the next page link
+            $next_page = $current_page + 1;
+            echo '<a href="' . esc_url(add_query_arg('page', $next_page)) . '">Next</a>';
+        }
+        echo '</div>';
+
+
+        // Check if there are user records
+        if (!empty($user_records)) {
+            foreach ($user_records as $record) {
+                // Include the template file
+                $file = ABSPATH . 'wp-content/plugins/user-registration/review-card.php';
+                include_once($file);
+            }
+        } else {
+            // Check if rating filter is applied and no reviews found
+            if (!empty($rating_filter)) {
+                echo 'No reviews found for the selected rating.';
+            } else {
+                echo 'No reviews found.';
+            }
+        }
+
+       // Display pagination links
+        echo '<div class="pagination">';
+        if ($current_page > 1) {
+            // Display the previous page link
+            $prev_page = $current_page - 1;
+            echo '<a href="' . esc_url(add_query_arg(array('page' => $prev_page, 'latest-filter-changes' => 0, 'review-filter-changes' => 0, 'pagination-changes' => 0))) . '">Previous</a>';
+        }
+
+        for ($i = 1; $i <= $total_pages; $i++) {
+            // Display the page number link
+            echo '<a href="' . esc_url(add_query_arg(array('page' => $i, 'latest-filter-changes' => 0, 'review-filter-changes' => 0, 'pagination-changes' => 0))) . '">' . $i . '</a>';
+        }
+
+        if ($current_page < $total_pages) {
+            // Display the next page link
+            $next_page = $current_page + 1;
+            echo '<a href="' . esc_url(add_query_arg(array('page' => $next_page, 'latest-filter-changes' => 0, 'review-filter-changes' => 0, 'pagination-changes' => 0))) . '">Next</a>';
+        }
+        echo '</div>';
+
+    } else {
+        ?>
+        <p>You are not authorized to view this content. Please log in to access the reviews.</p>
+    <?php }
+
+    return ob_get_clean();
+}
+    
+    
+
 }
             
 // Instantiate the plugin.
